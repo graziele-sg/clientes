@@ -1,4 +1,4 @@
-package br.com.teste.clientes.rest.exception;
+package br.com.teste.clientes.exception;
 
 import java.util.Arrays;
 import java.util.List;

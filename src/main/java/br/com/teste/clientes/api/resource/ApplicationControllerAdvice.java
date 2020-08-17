@@ -1,8 +1,9 @@
-package br.com.teste.clientes.rest;
+package br.com.teste.clientes.api.resource;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
+import br.com.teste.clientes.exception.BusinessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
-import br.com.teste.clientes.rest.exception.ApiErrors;
+import br.com.teste.clientes.exception.ApiErrors;
 
 @RestControllerAdvice
 public class ApplicationControllerAdvice {
@@ -30,9 +31,13 @@ public class ApplicationControllerAdvice {
 	
 	@ExceptionHandler(ResponseStatusException.class)
 	public ResponseEntity<ApiErrors> handleResponseStatusException(ResponseStatusException ex) {
-		String mensagemErro = ex.getMessage();
-		HttpStatus codigoStatus = ex.getStatus();
-		ApiErrors apiErrors = new ApiErrors(mensagemErro);
-		return new ResponseEntity<ApiErrors>(apiErrors, codigoStatus);
+		ApiErrors apiErrors = new ApiErrors(ex.getMessage());
+		return new ResponseEntity<ApiErrors>(apiErrors, ex.getStatus());
+	}
+
+	@ExceptionHandler(BusinessException.class)
+	@ResponseStatus(HttpStatus.BAD_REQUEST)
+	public ApiErrors handleBusinessException(Exception ex) {
+		return new ApiErrors(ex.getMessage());
 	}
 }

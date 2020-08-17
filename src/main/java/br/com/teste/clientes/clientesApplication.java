@@ -1,5 +1,6 @@
 package br.com.teste.clientes;
 
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -12,16 +13,13 @@ import br.com.teste.clientes.model.repository.ClienteRepository;
 @SpringBootApplication
 public class clientesApplication {
 
-//	@Bean
-//	public CommandLineRunner run(@Autowired ClienteRepository repository) {
-//		return args -> {
-//			Cliente cliente = Cliente.builder().cpf("00000000000").nome("Fulano").build();
-//			repository.save(cliente);
-//		};
-//	}
-	
 	public static void main(String[] args) {
 		SpringApplication.run(clientesApplication.class, args);
+	}
+
+	@Bean
+	public ModelMapper modelMapper() {
+		return new ModelMapper();
 	}
 
 }
