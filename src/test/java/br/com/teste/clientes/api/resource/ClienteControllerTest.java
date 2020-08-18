@@ -1,26 +1,16 @@
 package br.com.teste.clientes.api.resource;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.hasSize;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Optional;
 
 import br.com.teste.clientes.api.dto.ClienteDTO;
-import br.com.teste.clientes.api.resource.ClienteController;
 import br.com.teste.clientes.exception.BusinessException;
 import br.com.teste.clientes.service.ClienteService;
 import org.hamcrest.Matchers;
@@ -33,6 +23,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -44,15 +37,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import br.com.teste.clientes.config.InternacionalizacaoConfig;
 import br.com.teste.clientes.model.entity.Cliente;
-import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 
 @ExtendWith(SpringExtension.class)
 @ActiveProfiles("test")
-@WebMvcTest
+@WebMvcTest(controllers = ClienteController.class)
 @AutoConfigureMockMvc
 public class ClienteControllerTest {
 
-	static String CLIENTE_API = "/api/clientes";
+	static final String CLIENTE_API = "/api/clientes";
 
 	@Autowired
 	MockMvc mvc;
@@ -65,7 +57,7 @@ public class ClienteControllerTest {
 
 	@Test
 	@DisplayName("Deve criar um cliente com sucesso")
-	public void criaClienteTest() throws Exception {
+	public void createClienteTest() throws Exception {
 		//cenário
 		Long id = 1L;
 		String nome = "Fulano";
@@ -92,7 +84,7 @@ public class ClienteControllerTest {
 
 	@Test
 	@DisplayName("Deve lançar erro de validação quando campos obrigatórios não forem preenchidos")
-	public void tentaCriarClienteComErroDeValidacaoTest() throws Exception {
+	public void createInvalidClienteTest() throws Exception {
 
 		MockHttpServletRequestBuilder request = MockMvcRequestBuilders.post(CLIENTE_API)
 				.contentType(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON)
@@ -109,7 +101,7 @@ public class ClienteControllerTest {
 
 	@Test
 	@DisplayName("Deve lançar erro de validação quando o cpf for inválido")
-	public void tentaCriarClienteComCPFInvalidoTest() throws Exception {
+	public void CreateClienteInvalidCpfTest() throws Exception {
 
 		ClienteDTO dto = new ClienteDTO(null, "Fulano", "11111111", null);
 
@@ -124,7 +116,7 @@ public class ClienteControllerTest {
 
 	@Test
 	@DisplayName("Deve lançar erro ao tentar cadastrar um um cliente com cpf já cadastrado")
-	public void tentaCriarClienteComCpfDuplicadoTest() throws Exception {
+	public void createClienteWithDuplicatedCpfTest() throws Exception {
 
 		String mensagemErro = "campo.cpf.ja.cadastrado";
 		ClienteDTO dto = new ClienteDTO(null, "Fulano", "47442993001", null);
@@ -187,7 +179,7 @@ public class ClienteControllerTest {
 
 	@Test
 	@DisplayName("Deve retornar resource not found quando não encontrar o cliente para deletar")
-	public void tentaDeletarClienteInexistenteTest() throws Exception {
+	public void deleteInexistenClienteTest() throws Exception {
 
 		BDDMockito.given(service.getById(Mockito.anyLong())).willReturn(Optional.empty());
 
@@ -204,11 +196,10 @@ public class ClienteControllerTest {
 		Long id = 1L;
 		LocalDate data = LocalDate.now();
 		String dataEsperada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-		Cliente updatingCliente = new Cliente(id, "Fulano", "47442993001", data);
+		Cliente updatingCliente = new Cliente(id, "Fulano", "47442993001", null);
 		Cliente updatedCliente = new Cliente(id, "Cicrano", "08607652028", data);
 		ClienteDTO dto = new ClienteDTO(updatingCliente.getId(),updatingCliente.getNome(),
 				updatingCliente.getCpf(), updatingCliente.getDataCadastro());
-
 		BDDMockito.given(service.getById(Mockito.anyLong())).willReturn(Optional.of(updatingCliente));
 		BDDMockito.given(service.update(updatingCliente)).willReturn(updatedCliente);
 
@@ -216,101 +207,39 @@ public class ClienteControllerTest {
 				.contentType(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON)
 				.content(asJsonString(dto));
 
-		mvc.perform(request).andExpect(status().isOk());
-//				.andExpect(status().isOk())
-//				.andExpect(jsonPath("id").value(updatedCliente.getId()))
-//				.andExpect(jsonPath("nome").value(updatedCliente.getNome()))
-//				.andExpect(jsonPath("cpf").value(updatedCliente.getCpf()))
-//				.andExpect(jsonPath("dataCadastro").value(updatedCliente.getDataCadastro()));
+		mvc.perform(request).andExpect(status().isOk())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("id").value(updatedCliente.getId()))
+				.andExpect(jsonPath("nome").value(updatedCliente.getNome()))
+				.andExpect(jsonPath("cpf").value(updatedCliente.getCpf()));
+				//.andExpect(jsonPath("dataCadastro").value(updatedCliente.getDataCadastro()));
 	}
 
-/*	@Test
-	@DisplayName("Deve salvar um cliente")
-	void testSalvar() throws Exception {
-		// cenário
+	@Test
+	@DisplayName("Deve filtrar clientes")
+	public void findClienteTest() throws Exception {
+
+		Long id = 1L;
 		LocalDate data = LocalDate.now();
 		String dataEsperada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-		Cliente clienteToPost = new Cliente(null, "Fulano", "47442993001", null);
-		Cliente clienteToReturn = new Cliente(1, "Fulano", "47442993001", data);
-		Mockito.when(repository.save(clienteToPost)).thenReturn(clienteToReturn);
+		int pagePR = 0;
+		int sizePR = 100;
+		Cliente cliente = new Cliente(id, "Fulano", "47442993001", data);
 
-		// execução
-		Cliente clientePosted = service.salvar(clienteToPost);
+		BDDMockito.given(service.find(Mockito.any(Cliente.class), Mockito.any(Pageable.class)))
+				.willReturn(new PageImpl<Cliente>(Arrays.asList(cliente), PageRequest.of(0, 100), 1));
 
-		// verificação
-		assertThat(clientePosted.getId()).isEqualTo(clienteToReturn.getId());
-		assertThat(clientePosted.getNome()).isEqualTo(clienteToReturn.getNome();
-		assertThat(clientePosted.getCpf()).isEqualTo(clienteToReturn.getCpf();
-		assertThat(clientePosted.getDataCadastro()).isEqualTo(clienteToReturn.getDataCadastro();
+		String queryString = String.format("?nome=%s&page=0&size=100", cliente.getNome());
+		MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get(CLIENTE_API.concat(queryString))
+				.accept(MediaType.APPLICATION_JSON);
 
-
-		Cliente clienteToPost = new Cliente(null, "Fulano", "47442993001", null);
-		Cliente clienteToReturn = new Cliente(1, "Fulano", "47442993001", data);
-		doReturn(clienteToReturn).when(service).salvar(any());
-
-		mockMvc.perform(
-				post("/api/clientes").contentType(MediaType.APPLICATION_JSON).content(asJsonString(clienteToPost)))
-				.andExpect(status().isCreated()).andExpect(content().contentType(MediaType.APPLICATION_JSON))
-				.andExpect(jsonPath("$.id", is(1))).andExpect(jsonPath("$.nome", is("Fulano")))
-				.andExpect(jsonPath("$.cpf", is("47442993001")))
-				.andExpect(jsonPath("$.dataCadastro", is(dataEsperada)));
-	}*/
-
-//	@Test
-//	@DisplayName("Procurar um cliente pelo id")
-//	void testAcharPorId() throws Exception {
-//		LocalDate data = LocalDate.now();
-//		String dataEsperada = data.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-//		int id = 1;
-//
-//		Cliente cliente1 = new Cliente(id, "Fulano", "47442993001", data);
-//		doReturn(cliente1).when(service).acharPorId(id);
-//
-//		mockMvc.perform(get("/api/clientes/{id}", id)).andExpect(status().isOk())
-//				.andExpect(content().contentType(MediaType.APPLICATION_JSON)).andExpect(jsonPath("$.id", is(id)))
-//				.andExpect(jsonPath("$.nome", is("Fulano"))).andExpect(jsonPath("$.cpf", is("47442993001")))
-//				.andExpect(jsonPath("$.dataCadastro", is(dataEsperada)));
-//	}
-
-//	@Test
-//	@DisplayName("Retornar a mensagem de Not Found quando procurar um cliente inexistente")
-//	void testAcharPorIdNotFound() throws Exception {
-//		int id = 1;
-//		String mensagem = messages.getMessage("cliente.inexistente");
-//
-//		doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, mensagem)).when(service).acharPorId(id);
-//
-//		mockMvc.perform(get("/api/clientes/{id}", id)).andExpect(status().isNotFound());
-//	}
-
-//	@Test
-//	@DisplayName("Deletar um cliente")
-//	void testDeletar() throws Exception {
-//		int id = 1;
-//		doNothing().when(service).deletar(id);
-//
-//		mockMvc.perform(delete("/api/clientes/{id}", id)).andExpect(status().isNoContent());
-//		assertDoesNotThrow( () -> service.deletar(id) );
-//
-//	}
-
-//	@Test
-//	@DisplayName("Atualizar um cliente")
-//	void testAtualizar() throws Exception {
-//		LocalDate data = LocalDate.now();
-//		int id = 1;
-//		Cliente clienteToPut = new Cliente(null, "Fulano", "47442993001", null);
-//		Cliente clienteToReturnFindBy = new Cliente(id, "Fulano", "47442993001", data);
-//		Cliente clienteToReturnSave = new Cliente(id, "Fulano certo", "47442993001", data);
-//
-//		doReturn(clienteToReturnFindBy).when(service).acharPorId(id);
-//		doReturn(clienteToReturnSave).when(service).salvar(any());
-//
-//		mockMvc.perform(put("/api/clientes/{id}", id)
-//				.contentType(MediaType.APPLICATION_JSON)
-//				.content(asJsonString(clienteToPut)))
-//				.andExpect(status().isNoContent());
-//	}
+		mvc.perform(request).andExpect(status().isOk())
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("content", Matchers.hasSize(1)))
+				.andExpect(jsonPath("totalElements").value(1))
+				.andExpect(jsonPath("pageable.pageSize").value(sizePR))
+				.andExpect(jsonPath("pageable.pageNumber").value(pagePR));
+	}
 
 	static String asJsonString(final Object obj) {
 		try {

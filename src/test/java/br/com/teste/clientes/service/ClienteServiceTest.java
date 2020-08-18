@@ -18,6 +18,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.util.Arrays;
@@ -27,7 +28,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.BDDMockito.given;
+import static org.mockito.ArgumentMatchers.*;
 
 @ExtendWith(SpringExtension.class)
 @ActiveProfiles("test")
@@ -36,9 +37,6 @@ public class ClienteServiceTest {
 
     @MockBean
     ClienteRepository repository;
-
-    @MockBean
-    InternacionalizacaoConfig messages;
 
     @BeforeEach
     public void SetUp() {
@@ -53,7 +51,7 @@ public class ClienteServiceTest {
         String cpf = "47442993001";
         LocalDate data = LocalDate.now();
         Cliente clienteSaving = Cliente.builder().nome(nome).cpf(cpf).build();
-        Cliente clienteSaved = Cliente.builder().id(id).nome(nome).cpf(cpf).dataCadastro(data).build();
+        Cliente clienteSaved = new Cliente(id, nome, cpf, data);
 
         Mockito.when(repository.existsByCpf(Mockito.anyString())).thenReturn(false);
         Mockito.when(repository.save(clienteSaving)).thenReturn(clienteSaved);
@@ -71,8 +69,7 @@ public class ClienteServiceTest {
     public void shoulNotSaveAClienteWithDuplicatedCpfTest() {
         String mensagemErro = "campo.cpf.ja.cadastrado";
         Cliente cliente = Cliente.builder().nome("Fulano").cpf("47442993001").build();
-        Mockito.when(repository.existsByCpf(Mockito.anyString())).thenReturn(true);
-        //Mockito.when(messages).thenReturn(messages.);
+        Mockito.when(repository.existsByCpf(Mockito.anyString())).thenThrow( new BusinessException(mensagemErro));
 
         Throwable exception = Assertions.catchThrowable(() -> service.save(cliente));
 
@@ -125,11 +122,12 @@ public class ClienteServiceTest {
     public void deleteInvalidClienteTest() {
 
         Cliente cliente = new Cliente();
-        //given(repository).willThrow(new RuntimeException("throw"));
-        Mockito.doThrow(new IllegalArgumentException("cliente.id.nulo")).when(repository).delete(cliente);
+
+        InternacionalizacaoConfig messagesMock = Mockito.mock(InternacionalizacaoConfig.class);
+        Mockito.when(messagesMock.getMessage(anyString())).thenReturn("cliente.id.nulo");
+        ReflectionTestUtils.setField( service, "messages", messagesMock);
 
         assertThrows(IllegalArgumentException.class, () -> service.delete(cliente) );
-
         Mockito.verify(repository, Mockito.never()).delete(cliente);
     }
 
@@ -158,6 +156,10 @@ public class ClienteServiceTest {
 
         Cliente cliente = new Cliente();
 
+        InternacionalizacaoConfig messagesMock = Mockito.mock(InternacionalizacaoConfig.class);
+        Mockito.when(messagesMock.getMessage(anyString())).thenReturn("cliente.id.nulo");
+        ReflectionTestUtils.setField( service, "messages", messagesMock);
+
         assertThrows(IllegalArgumentException.class, () -> service.update(cliente) );
 
         Mockito.verify(repository, Mockito.never()).save(cliente);
@@ -183,4 +185,5 @@ public class ClienteServiceTest {
         assertThat(result.getPageable().getPageNumber()).isEqualTo(pagePR);
         assertThat(result.getPageable().getPageSize()).isEqualTo(sizePR);
     }
+
 }
