@@ -111,6 +111,7 @@ public class ClienteServiceTest {
     public void deleteClienteTest() {
 
         Cliente cliente = Cliente.builder().id(1L).build();
+        messagesMock(service);
 
         assertDoesNotThrow( () -> service.delete(cliente) );
 
@@ -122,10 +123,7 @@ public class ClienteServiceTest {
     public void deleteInvalidClienteTest() {
 
         Cliente cliente = new Cliente();
-
-        InternacionalizacaoConfig messagesMock = Mockito.mock(InternacionalizacaoConfig.class);
-        Mockito.when(messagesMock.getMessage(anyString())).thenReturn("cliente.id.nulo");
-        ReflectionTestUtils.setField( service, "messages", messagesMock);
+        messagesMock(service);
 
         assertThrows(IllegalArgumentException.class, () -> service.delete(cliente) );
         Mockito.verify(repository, Mockito.never()).delete(cliente);
@@ -140,6 +138,7 @@ public class ClienteServiceTest {
         Cliente updatingCliente = new Cliente(id, "Fulano", "47442993001", data);
         Cliente updatedCliente = new Cliente(id, "Cicrano", "08607652028", data);
 
+        messagesMock(service);
         Mockito.when(repository.save(updatingCliente)).thenReturn(updatedCliente);
 
         Cliente cliente = service.update(updatingCliente);
@@ -155,10 +154,7 @@ public class ClienteServiceTest {
     public void updateInvalidClienteTest() {
 
         Cliente cliente = new Cliente();
-
-        InternacionalizacaoConfig messagesMock = Mockito.mock(InternacionalizacaoConfig.class);
-        Mockito.when(messagesMock.getMessage(anyString())).thenReturn("cliente.id.nulo");
-        ReflectionTestUtils.setField( service, "messages", messagesMock);
+        messagesMock(service);
 
         assertThrows(IllegalArgumentException.class, () -> service.update(cliente) );
 
@@ -186,4 +182,9 @@ public class ClienteServiceTest {
         assertThat(result.getPageable().getPageSize()).isEqualTo(sizePR);
     }
 
+    private void messagesMock(ClienteService service) {
+        InternacionalizacaoConfig messagesMock = Mockito.mock(InternacionalizacaoConfig.class);
+        Mockito.when(messagesMock.getMessage(anyString())).thenReturn("cliente.id.nulo");
+        ReflectionTestUtils.setField(service, "messages", messagesMock);
+    }
 }
