@@ -1,0 +1,23 @@
+Swagger
+http://localhost:8080/swagger-ui/index.html
+
+**********************************************
+
+Actuator 
+http://localhost:8080/actuator
+
+**********************************************
+
+H2 Console
+http://localhost:8080/h2-console/
+
+username=sa
+password=password
+
+**********************************************
+
+Spring Boot Admin
+http://localhost:8081/
+
+username=actuator
+password=password
